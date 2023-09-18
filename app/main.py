@@ -27,7 +27,6 @@ class Post(BaseModel):
     rating: Optional[int] = None
     
 
-my_posts = []
 
 def find_post(id):
     for p in my_posts:
@@ -62,18 +61,19 @@ def get_posts():
 
 @app.get("/posts/{id}")
 def get_post(id: int, response: Response):
-    
-    post = find_post(id)
+    cursor.execute(""" SELECT * from POSTS WHERE id = %s""",(id,))
+    post = cursor.fetchone()
+    print(post)
     if not post:
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} was not found")
     return {"post_detail": post}
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 def post_posts(post: Post):
-    post_dict = post.dict()
-    post_dict['id'] = randrange(0,1000000)
-    my_posts.append(post_dict)
-    return {"data": post_dict}
+    cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *""", (post.title, post.content, post.publish))
+    new_post = cursor.fetchone()
+    conn.commit()
+    return {"data": new_post}
 
 @app.delete("/posts/{id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
